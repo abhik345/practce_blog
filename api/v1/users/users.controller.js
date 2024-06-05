@@ -1,46 +1,43 @@
 import { createUser,getUsers,getUserById,getUserByEmail} from "./users.service.js";
 import {genSaltSync, hashSync} from "bcrypt";
 
-const createUserController = async (req,res) => {
-
-
-
-    const { user_email,user_name,user_password} = req.body;
-
-    if(user_email){
-      await  getUserByEmail(user_email,(error,results) => {
-            if(error){
-                return error;
-            }
-            const {user_email: email} = results;
-            if(email === user_email){
-               return  res.status(409).json({
-                    status : 409,
-                    message : "User Already exists Try Another email"
-                })
-            }
-
-        })
-    }
-
-    const salt = genSaltSync(10);
-    const hashedPassword = hashSync(user_password,salt);
-    const userData = {
-        user_name : user_name,
-        user_email : user_email,
-        user_password : hashedPassword
-    }
-
-    createUser(userData, async (error,result) => {
-        if(error){
-            return res.status(500).json(error)
+const createUserController = async (req, res) => {
+    const { user_email, user_name, user_password } = req.body;
+    try {
+        if (!user_email) {
+            return res.status(400).json({
+                status: 400,
+                message: "User email is required"
+            });
         }
-        return  res.status(200).json({
+        const existingUser = await getUserByEmail(user_email);
+        if (existingUser) {
+            return res.status(409).json({
+                status: 409,
+                message: "User already exists. Try another email."
+            });
+        }
+        const salt = genSaltSync(10);
+        const hashedPassword = hashSync(user_password, salt);
+        const userData = {
+            user_name: user_name,
+            user_email: user_email,
+            user_password: hashedPassword
+        };
+        await createUser(userData);
+        return res.status(200).json({
             status: 200,
-            message : "User Created successfully"
-        })
-    })
+            message: "User created successfully"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
 };
+
 
 const getUsersController = async (req,res) => {
     getUsers((error,results) => {
